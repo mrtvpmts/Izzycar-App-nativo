@@ -2,32 +2,59 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomMenu from '../../components/BottomMenu';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth(); // Get auth context
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [banners, setBanners] = useState<any[]>([]);
 
-  // Dados dos banners
-  const banners = [
-    {
-      id: 'oil',
-      title: 'Troca de Óleo',
-      subtitle: 'Agende e ganhe 15% OFF.',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDlb6wQmOF9OeEJJ96ymdLJxi6HWfYViLwbDfuN-3ktVLMIfw7Wn9vTNp9R7yEdN0_QGgcP1YsYHQqooW4smFVSZqF70JRbCSSHG34owh7g5iU1iWkq33cOcpcx-HAmeVomq8pR9jsGU6MtBKkVsmwPfrwwLA8vi2QzsP4YlxR5FyP87vkHAjgZE6UMFmSRgc_POY6LrwuT6tY9e-ZIF3ya1w8iOtbBzvAs3TRCnl-i03IU_ck2ZkzQh9LYfqmJB9h5q-8SM1JznKE',
-      action: 'Saber Mais'
-    },
-    {
-      id: 'alignment',
-      title: 'Alinhamento 3D',
-      subtitle: 'Tecnologia de ponta.',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAriJUwj2HKQq1dE4N0uDQBEfqEZc2hJFmd5w7b9Vy115g_JoSbqYdqRPSwDmjmrOLKGkv91AtAUIA-HS_O6CkHhAERDQqqlSCgbrar69IVOjNjSY1B9amUQMt-LkmTEaByO7h6nud0LYfyijhiH5lRuA_B2vcGxz080oGS24xHraqLdJY_QhsE6fNFxCYCtTCDzEwau0P5PvqoWGXkZ9I5tqPoa_uG4zAcCzDqIHReXVUOxPmDHdGXbOKe4DrudsWheCBm47emW0s',
-      action: 'Verificar'
+  // Helpers for RBAC
+  const isAdmin = profile?.role === 'admin' || user?.email === 'adm@lcpneus.com.br';
+  const isEmployee = profile?.role === 'employee' || profile?.role === 'mechanic' || profile?.role === 'admin';
+
+  useEffect(() => {
+    fetchPromotions();
+  }, []);
+
+  const fetchPromotions = async () => {
+    try {
+      const { data } = await supabase.from('promotions').select('*').eq('active', true).order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        // Map to expected format if needed, or use directly
+        const mapped = data.map(p => ({
+          id: p.id,
+          title: p.title,
+          subtitle: p.subtitle,
+          image: p.image_url,
+          action: p.action_text || 'Saber Mais'
+        }));
+        setBanners(mapped);
+      } else {
+        // Fallback default banners if no active promotions
+        setBanners([
+          {
+            id: 'default-1',
+            title: 'Bem-vindo à LC Pneus',
+            subtitle: 'O melhor cuidado para seu carro.',
+            image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDlb6wQmOF9OeEJJ96ymdLJxi6HWfYViLwbDfuN-3ktVLMIfw7Wn9vTNp9R7yEdN0_QGgcP1YsYHQqooW4smFVSZqF70JRbCSSHG34owh7g5iU1iWkq33cOcpcx-HAmeVomq8pR9jsGU6MtBKkVsmwPfrwwLA8vi2QzsP4YlxR5FyP87vkHAjgZE6UMFmSRgc_POY6LrwuT6tY9e-ZIF3ya1w8iOtbBzvAs3TRCnl-i03IU_ck2ZkzQh9LYfqmJB9h5q-8SM1JznKE',
+            action: 'Agendar'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching promotions:', error);
     }
-  ];
+  };
 
   // Auto-scroll logic
   useEffect(() => {
+    if (banners.length === 0) return;
+
     const interval = setInterval(() => {
       if (scrollRef.current) {
         const nextSlide = (activeSlide + 1) % banners.length;
@@ -42,7 +69,7 @@ const Dashboard: React.FC = () => {
     }, 4000); // 4 segundos
 
     return () => clearInterval(interval);
-  }, [activeSlide, banners.length]);
+  }, [activeSlide, banners]);
 
   // Handle manual scroll to update dots
   const handleScroll = () => {
@@ -250,6 +277,29 @@ const Dashboard: React.FC = () => {
               <p className="text-[10px] text-[#A0A0A0]">Tire dúvidas</p>
             </div>
           </div>
+
+          {/* ADMIN / EMPLOYEE ACCESS */}
+          {isAdmin && (
+            <div onClick={() => navigate('/admin')} className="col-span-2 bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg transition-all border border-gray-600 relative overflow-hidden group">
+              <div className="flex flex-col relative z-10">
+                <h3 className="font-black text-white text-xl uppercase italic tracking-tight">Painel Admin</h3>
+                <p className="text-xs text-white/90 mt-1 font-medium">Gerenciar Loja e Assinaturas</p>
+              </div>
+              <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center text-white backdrop-blur-sm relative z-10 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-3xl">admin_panel_settings</span>
+              </div>
+            </div>
+          )}
+
+          {isEmployee && !isAdmin && (
+            <div onClick={() => navigate('/employee/checklist')} className="col-span-2 bg-[#2a1622] rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer border border-[#d41142]/30 hover:bg-[#381d2d]">
+              <div className="flex flex-col">
+                <h3 className="font-bold text-white text-lg">Área do Funcionário</h3>
+                <p className="text-xs text-[#A0A0A0]">Acessar Checklist e Serviços</p>
+              </div>
+              <span className="material-symbols-outlined text-[#d41142] text-3xl">engineering</span>
+            </div>
+          )}
 
         </div>
       </main>

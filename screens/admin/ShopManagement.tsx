@@ -2,12 +2,51 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
+interface Service {
+    id: string;
+    name: string;
+    price: number;
+    duration_minutes: number;
+    description?: string;
+}
+
+interface Profile {
+    id: string;
+    full_name: string;
+    role: string;
+    avatar_url: string;
+    is_online: boolean;
+    email?: string;
+}
+
+interface Promotion {
+    id: string;
+    title: string;
+    subtitle: string;
+    image_url: string;
+    action_text: string;
+    active: boolean;
+}
+
 const ShopManagement: React.FC = () => {
     const navigate = useNavigate();
-    const [services, setServices] = useState<any[]>([]);
-    const [team, setTeam] = useState<any[]>([]);
-    const [hours, setHours] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [services, setServices] = useState<Service[]>([]);
+    const [team, setTeam] = useState<Profile[]>([]);
+    const [hours, setHours] = useState<any[]>([]);
+    const [promotions, setPromotions] = useState<Promotion[]>([]);
+
+    // Modal States
+    const [showServiceModal, setShowServiceModal] = useState(false);
+    const [editingService, setEditingService] = useState<Service | null>(null);
+    const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+    const [showPromoModal, setShowPromoModal] = useState(false);
+
+    // Form States
+    const [serviceForm, setServiceForm] = useState({ name: '', price: '', duration: '', description: '' });
+    const [employeeForm, setEmployeeForm] = useState({ email: '', full_name: '', password: '', role: 'employee' });
+    const [promoForm, setPromoForm] = useState({ title: '', subtitle: '', image_url: '', action_text: 'Saber Mais' });
 
     useEffect(() => {
         fetchShopData();
@@ -16,17 +55,21 @@ const ShopManagement: React.FC = () => {
     const fetchShopData = async () => {
         try {
             setLoading(true);
-            // Fetch Services
-            const { data: servicesData } = await supabase.from('services').select('*').eq('active', true);
-            if (servicesData) setServices(servicesData);
+            // Services
+            const { data: s } = await supabase.from('services').select('*').eq('active', true).order('name');
+            if (s) setServices(s);
 
-            // Fetch Team (Employees/Mechanics)
-            const { data: teamData } = await supabase.from('profiles').select('*').in('role', ['mechanic', 'employee']);
-            if (teamData) setTeam(teamData);
+            // Team
+            const { data: t } = await supabase.from('profiles').select('*').in('role', ['mechanic', 'employee']);
+            if (t) setTeam(t);
 
-            // Fetch Hours
-            const { data: hoursData } = await supabase.from('business_hours').select('*').order('day_of_week');
-            if (hoursData) setHours(hoursData);
+            // Hours
+            const { data: h } = await supabase.from('business_hours').select('*').order('day_of_week');
+            if (h) setHours(h);
+
+            // Promotions
+            const { data: p } = await supabase.from('promotions').select('*').order('created_at', { ascending: false });
+            if (p) setPromotions(p);
 
         } catch (error) {
             console.error(error);
@@ -35,97 +78,312 @@ const ShopManagement: React.FC = () => {
         }
     };
 
+    // --- Services Logic ---
+    const handleSaveService = async () => {
+        const payload = {
+            name: serviceForm.name,
+            price: parseFloat(serviceForm.price),
+            duration_minutes: parseInt(serviceForm.duration),
+            description: serviceForm.description,
+            active: true
+        };
+
+        if (editingService) {
+            await supabase.from('services').update(payload).eq('id', editingService.id);
+        } else {
+            await supabase.from('services').insert(payload);
+        }
+        setShowServiceModal(false);
+        setEditingService(null);
+        setServiceForm({ name: '', price: '', duration: '', description: '' });
+        fetchShopData();
+    };
+
     const handleDeleteService = async (id: string) => {
-        // Logic to soft delete
+        if (!confirm('Tem certeza?')) return;
         await supabase.from('services').update({ active: false }).eq('id', id);
         fetchShopData();
     };
 
+    // --- Employee Logic ---
+    const handleAddEmployee = async () => {
+        try {
+            // Create Auth User
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: employeeForm.email,
+                password: employeeForm.password,
+                options: {
+                    data: {
+                        full_name: employeeForm.full_name,
+                        role: employeeForm.role
+                    }
+                }
+            });
+
+            if (authError) throw authError;
+            alert('Funcionário criado com sucesso!');
+            setShowEmployeeModal(false);
+            setEmployeeForm({ email: '', full_name: '', password: '', role: 'employee' });
+            fetchShopData();
+
+        } catch (error: any) {
+            alert('Erro: ' + error.message);
+        }
+    };
+
+    const handleDeleteEmployee = async (id: string) => {
+        // Soft delete or role change logic? For now just alert.
+        alert('Para remover acesso, altere o cargo no banco de dados ou desative o usuário.');
+    };
+
+
+    // --- Hours Logic ---
+    const handleHoursChange = (index: number, field: string, value: any) => {
+        const newHours = [...hours];
+        newHours[index][field] = value;
+        setHours(newHours);
+    };
+
+    const saveHours = async () => {
+        const updates = hours.map(h => ({
+            id: h.id,
+            open_time: h.open_time,
+            close_time: h.close_time,
+            is_closed: h.is_closed
+        }));
+
+        const { error } = await supabase.from('business_hours').upsert(updates);
+        if (error) alert('Erro ao salvar horários');
+        else alert('Horários atualizados!');
+    };
+
+    // --- Promotions Logic ---
+    const handleSavePromo = async () => {
+        await supabase.from('promotions').insert(promoForm);
+        setShowPromoModal(false);
+        setPromoForm({ title: '', subtitle: '', image_url: '', action_text: '' });
+        fetchShopData();
+    };
+
+    const togglePromoActive = async (id: string, current: boolean) => {
+        await supabase.from('promotions').update({ active: !current }).eq('id', id);
+        fetchShopData();
+    };
+
+    const handleDeletePromo = async (id: string) => {
+        if (confirm('Excluir esta promoção?')) {
+            await supabase.from('promotions').delete().eq('id', id);
+            fetchShopData();
+        }
+    }
+
+
     return (
-        <div className="relative flex min-h-screen w-full flex-col bg-[#221013] font-display text-white">
-            <div className="flex items-center bg-[#221013] p-4 pb-2 justify-between sticky top-0 z-10">
-                <div className="flex size-12 shrink-0 items-center justify-start">
-                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAbU9Kk3iH7-d-f2BySIj10fn6bhz4teQg697izBRoPkDQDY37SHbZY1V_4_T_4VE_ShFkFV5F1u9mxP4drGq9fQHuAtlErNzTWW4O4AMzbE8TcMXuysaMqHXbHIdRgQTF7x9gaWwPaczHTseBWRC8TDAkr148Pe6DJ451OpDgqKLrOMJ13lpFEs7zf6sGU_yNksiv9epL1HLxDrzmXu5NhKh8jLbhNk_KabK49PsG2iO8IsQHFK4sS8WX0L2_rCGbAlT9f_6drQ54")' }}></div>
+        <div className="relative flex min-h-screen w-full flex-col bg-[#121212] font-display text-white">
+            <div className="flex items-center bg-[#1E1E1E] p-4 pb-2 justify-between sticky top-0 z-20 border-b border-[#333]">
+                <div onClick={() => navigate('/admin/dashboard')} className="flex size-12 shrink-0 items-center justify-start cursor-pointer">
+                    <span className="material-symbols-outlined">arrow_back</span>
                 </div>
-                <h1 className="text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Gestão da Oficina</h1>
-                <div onClick={() => navigate('/login')} className="flex size-12 shrink-0 items-center justify-end cursor-pointer"><span className="material-symbols-outlined">logout</span></div>
+                <h1 className="text-white text-lg font-bold flex-1 text-center">Gestão da Loja</h1>
+                <div className="w-12"></div>
             </div>
 
-            <main className="flex-1 flex flex-col gap-6 px-4 py-4">
-                {/* Services Card */}
-                <div className="flex flex-col gap-4 rounded-xl bg-[#2a1a1d] p-4">
-                    <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Serviços Oferecidos</h2>
-                    <div className="flex flex-col gap-2">
-                        {services.map(service => (
-                            <div key={service.id} className="flex gap-4 py-3 justify-between items-center border-b border-white/10 last:border-none">
-                                <div className="flex items-center gap-4">
-                                    <div className="text-white flex items-center justify-center rounded-lg bg-[#482329] shrink-0 size-12">
-                                        <span className="material-symbols-outlined text-3xl">tire_repair</span>
-                                    </div>
-                                    <div className="flex flex-1 flex-col justify-center">
-                                        <p className="text-white text-base font-medium leading-normal">{service.name}</p>
-                                        <p className="text-[#c9929b] text-sm font-normal leading-normal">Preço: R${service.price} | Duração: {service.duration_minutes}m</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                    <div className="text-white flex size-7 items-center justify-center cursor-pointer"><span className="material-symbols-outlined">edit</span></div>
-                                    <div onClick={() => handleDeleteService(service.id)} className="text-[#d41132] flex size-7 items-center justify-center cursor-pointer"><span className="material-symbols-outlined">delete</span></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-[#d41132] text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em]">
-                        <span className="material-symbols-outlined text-xl">add</span>
-                        <span className="truncate">Adicionar Serviço</span>
-                    </button>
-                </div>
+            <main className="flex-1 flex flex-col gap-6 px-4 py-6 max-w-4xl mx-auto w-full">
 
-                {/* Team Card */}
-                <div className="flex flex-col gap-4 rounded-xl bg-[#2a1a1d] p-4">
-                    <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Equipe</h2>
+                {/* --- SEÇÃO 1: SERVIÇOS --- */}
+                <section className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">Serviços</h2>
+                        <button onClick={() => { setEditingService(null); setServiceForm({ name: '', price: '', duration: '', description: '' }); setShowServiceModal(true); }} className="bg-[#d41132] hover:bg-[#b00e36] text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+                            <span className="material-symbols-outlined text-sm">add</span> Novo
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        {services.map(s => (
+                            <div key={s.id} className="flex justify-between items-center bg-[#252525] p-3 rounded-lg border border-[#333] hover:border-[#d41132]/30 transition-colors">
+                                <div>
+                                    <p className="font-bold">{s.name}</p>
+                                    <p className="text-xs text-gray-400">R${s.price} • {s.duration_minutes} min</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setEditingService(s); setServiceForm({ name: s.name, price: s.price.toString(), duration: s.duration_minutes.toString(), description: s.description || '' }); setShowServiceModal(true); }} className="text-blue-400 hover:text-blue-300"><span className="material-symbols-outlined">edit</span></button>
+                                    <button onClick={() => handleDeleteService(s.id)} className="text-[#d41132] hover:text-red-400"><span className="material-symbols-outlined">delete</span></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* --- SEÇÃO 2: EQUIPE --- */}
+                <section className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">Equipe</h2>
+                        <button onClick={() => setShowEmployeeModal(true)} className="bg-[#d41132] hover:bg-[#b00e36] text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+                            <span className="material-symbols-outlined text-sm">person_add</span> Add
+                        </button>
+                    </div>
+
                     <div className="flex flex-col gap-2">
-                        {team.length === 0 && <p className="text-[#c9929b]">Nenhum funcionário encontrado.</p>}
-                        {team.map(member => (
-                            <div key={member.id} className="flex gap-4 py-3 justify-between items-center border-b border-white/10 last:border-none">
-                                <div className="flex items-center gap-4">
-                                    <img className="rounded-full size-12 shrink-0 object-cover" alt="Member" src={member.avatar_url || "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"} />
-                                    <div className="flex flex-1 flex-col justify-center">
-                                        <p className="text-white text-base font-medium leading-normal">{member.full_name || 'Sem nome'}</p>
-                                        <p className="text-[#c9929b] text-sm font-normal leading-normal capitalize">{member.role}</p>
+                        {team.map(t => (
+                            <div key={t.id} className="flex justify-between items-center bg-[#252525] p-3 rounded-lg border border-[#333]">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-full bg-gray-700 overflow-hidden">
+                                        {t.avatar_url ? <img src={t.avatar_url} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined w-full h-full flex items-center justify-center text-gray-400">person</span>}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold">{t.full_name || 'Sem nome'}</p>
+                                        <p className="text-xs text-gray-400 capitalize">{t.role}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`size-3 rounded-full ${member.is_online ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                                    <p className={`${member.is_online ? 'text-green-400' : 'text-gray-400'} text-sm`}>{member.is_online ? 'Online' : 'Offline'}</p>
+                                <div className="flex flex-col items-end">
+                                    <div className={`text-xs px-2 py-0.5 rounded-full ${t.is_online ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                        {t.is_online ? 'Online' : 'Offline'}
+                                    </div>
+                                    <button onClick={() => handleDeleteEmployee(t.id)} className="text-[#d41132] text-xs hover:underline mt-1">Remover</button>
                                 </div>
                             </div>
                         ))}
                     </div>
-                    <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 flex-1 bg-[#d41132] text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em]">
-                        <span className="material-symbols-outlined text-xl">add</span>
-                        <span className="truncate">Adicionar Funcionário</span>
-                    </button>
-                </div>
+                </section>
 
-                {/* Hours */}
-                <div className="flex flex-col gap-4 rounded-xl bg-[#2a1a1d] p-4">
-                    <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Horários de Funcionamento</h2>
-                    <div className="flex flex-col gap-4">
-                        {hours.length === 0 && <p className="text-[#c9929b]">Nenhum horário configurado.</p>}
-                        {hours.map(hour => (
-                            <div key={hour.id} className="flex items-center justify-between gap-4">
-                                <label className="flex-1 text-white">{hour.day_of_week}</label>
-                                <div className="flex items-center gap-2">
-                                    <input disabled={hour.is_closed} className="w-20 rounded-lg border-none bg-[#482329] text-white text-center text-sm focus:ring-[#d41132] disabled:opacity-50" type="text" defaultValue={hour.open_time?.slice(0, 5) || "--:--"} />
-                                    <span className="text-[#c9929b]">-</span>
-                                    <input disabled={hour.is_closed} className="w-20 rounded-lg border-none bg-[#482329] text-white text-center text-sm focus:ring-[#d41132] disabled:opacity-50" type="text" defaultValue={hour.close_time?.slice(0, 5) || "--:--"} />
+                {/* --- SEÇÃO 3: PROMOÇÕES --- */}
+                <section className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">Campanhas (Banners)</h2>
+                        <button onClick={() => setShowPromoModal(true)} className="bg-[#d41132] hover:bg-[#b00e36] text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+                            <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Nova
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {promotions.map(p => (
+                            <div key={p.id} className={`group relative h-32 rounded-lg overflow-hidden border border-[#333] ${!p.active ? 'opacity-50 grayscale' : ''}`}>
+                                <img src={p.image_url} className="absolute inset-0 w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/50 p-3 flex flex-col justify-between">
+                                    <div>
+                                        <p className="font-bold text-white">{p.title}</p>
+                                        <p className="text-xs text-gray-200">{p.subtitle}</p>
+                                    </div>
+                                    <div className="flex justify-end gap-2 text-white">
+                                        <button onClick={() => togglePromoActive(p.id, p.active)} title={p.active ? "Desativar" : "Ativar"}><span className="material-symbols-outlined">{p.active ? 'visibility' : 'visibility_off'}</span></button>
+                                        <button onClick={() => handleDeletePromo(p.id)} className="text-red-400"><span className="material-symbols-outlined">delete</span></button>
+                                    </div>
                                 </div>
-                                <input className="form-checkbox h-5 w-5 rounded-md text-[#d41132] bg-[#482329] border-none focus:ring-[#d41132]" type="checkbox" defaultChecked={!hour.is_closed} />
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
+
+                {/* --- SEÇÃO 4: HORÁRIOS --- */}
+                <section className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-white">Horários</h2>
+                        <button onClick={saveHours} className="text-[#d41132] font-bold text-sm hover:underline">Salvar Alterações</button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                        {hours.map((h, idx) => (
+                            <div key={h.id} className="flex items-center justify-between py-2 border-b border-[#333] last:border-0">
+                                <span className="w-24 font-medium text-gray-300">{h.day_of_week}</span>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="time"
+                                        value={h.open_time?.slice(0, 5) || ''}
+                                        onChange={(e) => handleHoursChange(idx, 'open_time', e.target.value)}
+                                        disabled={h.is_closed}
+                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center"
+                                    />
+                                    <span>-</span>
+                                    <input
+                                        type="time"
+                                        value={h.close_time?.slice(0, 5) || ''}
+                                        onChange={(e) => handleHoursChange(idx, 'close_time', e.target.value)}
+                                        disabled={h.is_closed}
+                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center"
+                                    />
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={h.is_closed}
+                                        onChange={(e) => handleHoursChange(idx, 'is_closed', e.target.checked)}
+                                        className="rounded border-gray-600 bg-[#252525] text-[#d41132] focus:ring-[#d41132]"
+                                    />
+                                    <span className="text-xs text-gray-400">Fechado</span>
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
             </main>
+
+            {/* --- MODALS --- */}
+
+            {/* Service Modal */}
+            {showServiceModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#1E1E1E] p-6 rounded-xl w-full max-w-md border border-[#333] shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h3>
+                        <div className="space-y-3">
+                            <input placeholder="Nome do Serviço" value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <div className="flex gap-3">
+                                <input type="number" placeholder="Preço (R$)" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })} className="w-1/2 bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                                <input type="number" placeholder="Duração (min)" value={serviceForm.duration} onChange={e => setServiceForm({ ...serviceForm, duration: e.target.value })} className="w-1/2 bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            </div>
+                            <textarea placeholder="Descrição (opcional)" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none h-24" />
+
+                            <div className="flex gap-3 mt-4">
+                                <button onClick={() => setShowServiceModal(false)} className="flex-1 bg-gray-700 py-3 rounded-lg font-bold">Cancelar</button>
+                                <button onClick={handleSaveService} className="flex-1 bg-[#d41132] py-3 rounded-lg font-bold">Salvar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Employee Modal */}
+            {showEmployeeModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#1E1E1E] p-6 rounded-xl w-full max-w-md border border-[#333] shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">Novo Funcionário</h3>
+                        <div className="space-y-3">
+                            <input placeholder="Nome Completo" value={employeeForm.full_name} onChange={e => setEmployeeForm({ ...employeeForm, full_name: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <input type="email" placeholder="Email" value={employeeForm.email} onChange={e => setEmployeeForm({ ...employeeForm, email: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <input type="password" placeholder="Senha Provisória" value={employeeForm.password} onChange={e => setEmployeeForm({ ...employeeForm, password: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <select value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none">
+                                <option value="employee">Funcionário/Atendente</option>
+                                <option value="mechanic">Mecânico</option>
+                            </select>
+
+                            <div className="flex gap-3 mt-4">
+                                <button onClick={() => setShowEmployeeModal(false)} className="flex-1 bg-gray-700 py-3 rounded-lg font-bold">Cancelar</button>
+                                <button onClick={handleAddEmployee} className="flex-1 bg-[#d41132] py-3 rounded-lg font-bold">Criar Acesso</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Promo Modal */}
+            {showPromoModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#1E1E1E] p-6 rounded-xl w-full max-w-md border border-[#333] shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">Nova Campanha</h3>
+                        <div className="space-y-3">
+                            <input placeholder="Título (ex: Oferta de Inverno)" value={promoForm.title} onChange={e => setPromoForm({ ...promoForm, title: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <input placeholder="Subtítulo (ex: 20% OFF)" value={promoForm.subtitle} onChange={e => setPromoForm({ ...promoForm, subtitle: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <input placeholder="URL da Imagem Banner" value={promoForm.image_url} onChange={e => setPromoForm({ ...promoForm, image_url: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+
+                            <div className="flex gap-3 mt-4">
+                                <button onClick={() => setShowPromoModal(false)} className="flex-1 bg-gray-700 py-3 rounded-lg font-bold">Cancelar</button>
+                                <button onClick={handleSavePromo} className="flex-1 bg-[#d41132] py-3 rounded-lg font-bold">Criar Banner</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

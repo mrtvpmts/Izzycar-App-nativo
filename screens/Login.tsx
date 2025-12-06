@@ -131,11 +131,7 @@ const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Links to other flows for Demo purposes */}
-        <div className="pt-8 border-t border-[#673232] flex flex-wrap gap-2 justify-center text-xs text-[#c99292]">
-          <span onClick={() => navigate('/admin')} className="cursor-pointer hover:text-white underline">Admin</span>
-          <span onClick={() => navigate('/employee/checklist')} className="cursor-pointer hover:text-white underline">Mecânico</span>
-        </div>
+
       </div>
     </div>
   );
