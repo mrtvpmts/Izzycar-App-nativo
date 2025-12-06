@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import { useRequest } from '../../../context/RequestContext';
 
 const SelectService: React.FC = () => {
   const navigate = useNavigate();
+  const { setServiceId } = useRequest();
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [description, setDescription] = useState('');
@@ -48,6 +50,13 @@ const SelectService: React.FC = () => {
     service.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleNext = () => {
+    if (selectedServiceId) {
+      setServiceId(selectedServiceId);
+      navigate('/request/consultant');
+    }
+  };
+
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col bg-[#121212] group/design-root overflow-x-hidden text-white">
       {/* Top App Bar */}
@@ -71,11 +80,6 @@ const SelectService: React.FC = () => {
         <div className="flex flex-col items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full bg-slate-700"></div>
           <p className="text-slate-500 text-xs font-medium">Consultor</p>
-        </div>
-        <div className="w-6 h-px bg-slate-700"></div>
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full bg-slate-700"></div>
-          <p className="text-slate-500 text-xs font-medium">Mecânico</p>
         </div>
         <div className="w-6 h-px bg-slate-700"></div>
         <div className="flex flex-col items-center gap-2">
@@ -136,7 +140,7 @@ const SelectService: React.FC = () => {
 
       <div className="p-4 pt-2 border-t border-[#333333] sticky bottom-0 bg-[#121212]">
         <button
-          onClick={() => navigate('/request/consultant')}
+          onClick={handleNext}
           disabled={!selectedServiceId}
           className={`w-full h-14 rounded-xl font-bold text-base flex items-center justify-center transition-colors ${selectedServiceId ? 'bg-[#800020] text-white shadow-lg shadow-[#800020]/20 hover:bg-[#800020]/90' : 'bg-[#333333] text-[#A0A0A0] cursor-not-allowed'}`}
         >

@@ -13,7 +13,7 @@ const Dashboard: React.FC = () => {
   const [banners, setBanners] = useState<any[]>([]);
 
   // Helpers for RBAC
-  const isAdmin = profile?.role === 'admin' || user?.email === 'adm@lcpneus.com.br';
+  const isAdmin = profile?.role === 'admin' || user?.email === 'adm@lcpneus.com.br' || user?.email === 'admin2@lcpneus.com.br';
   const isEmployee = profile?.role === 'employee' || profile?.role === 'mechanic' || profile?.role === 'admin';
 
   useEffect(() => {
@@ -201,7 +201,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Agendar Novo Serviço - Featured */}
-          <div onClick={() => navigate('/request/select-vehicle')} className="col-span-2 bg-gradient-to-r from-[#800020] to-[#b00e36] rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg hover:shadow-[#d41142]/30 transition-all border border-[#d41142]/50 relative overflow-hidden group">
+          <div onClick={() => navigate('/request/vehicle')} className="col-span-2 bg-gradient-to-r from-[#800020] to-[#b00e36] rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg hover:shadow-[#d41142]/30 transition-all border border-[#d41142]/50 relative overflow-hidden group">
             <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-black/20 to-transparent"></div>
             <div className="flex flex-col relative z-10">
               <h3 className="font-black text-white text-xl uppercase italic tracking-tight">Agendar Serviço</h3>
@@ -212,31 +212,42 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Buscar e Entregar Veículo - New Feature */}
-          <div onClick={() => navigate('/pickup/request')} className="col-span-2 bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg hover:shadow-blue-500/30 transition-all border border-blue-500/50 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-black/20 to-transparent"></div>
+          {/* Buscar e Entregar Veículo */}
+          <div onClick={() => navigate('/pickup/request')} className="col-span-2 bg-[#1E1E1E] rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg hover:shadow-[#d41142]/20 transition-all border border-[#333333] hover:border-[#d41142]/50 relative overflow-hidden group">
             <div className="flex flex-col relative z-10">
               <h3 className="font-black text-white text-xl uppercase italic tracking-tight">Buscar e Entregar</h3>
-              <p className="text-xs text-white/90 mt-1 font-medium">Buscamos e entregamos seu veículo</p>
+              <p className="text-xs text-[#A0A0A0] mt-1 font-medium group-hover:text-white transition-colors">Buscamos e entregamos seu veículo</p>
             </div>
-            <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm relative z-10 group-hover:scale-110 transition-transform">
+            <div className="h-12 w-12 bg-[#252525] rounded-full flex items-center justify-center text-[#d41142] border border-[#333] relative z-10 group-hover:scale-110 transition-transform">
               <span className="material-symbols-outlined text-3xl">local_shipping</span>
             </div>
           </div>
 
-          {/* MENU VIP - Destaque (Dourado) - CARD NOVO */}
-          <div onClick={handleVipAccess} className="col-span-2 bg-gradient-to-r from-amber-600 to-yellow-500 rounded-xl p-5 flex flex-row items-center justify-between cursor-pointer hover:shadow-lg hover:shadow-yellow-500/20 transition-all border border-yellow-500/30 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-2/3 bg-gradient-to-l from-black/30 to-transparent"></div>
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
-                <span className="material-symbols-outlined text-3xl">diamond</span>
+          {/* MENU VIP - Destaque (Premium Black/Gold) */}
+          <div onClick={handleVipAccess} className="col-span-1 bg-[#000000] rounded-xl p-5 flex flex-col justify-between cursor-pointer hover:shadow-xl hover:shadow-[#D4AF37]/20 transition-all border border-[#D4AF37]/40 relative overflow-hidden group h-32">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#D4AF37]/10 via-transparent to-transparent opacity-50"></div>
+            <div className="relative z-10 flex flex-col h-full justify-between">
+              <div className="flex justify-between items-start">
+                <div className="h-8 w-8 rounded-full flex items-center justify-center border border-[#D4AF37] text-[#D4AF37]">
+                  <span className="material-symbols-outlined text-xl">crown</span>
+                </div>
               </div>
               <div>
-                <h3 className="font-black text-white text-lg uppercase tracking-tight">Menu V.I.P</h3>
-                <p className="text-xs text-white/90 font-medium">Área Exclusiva</p>
+                <h3 className="font-black text-[#D4AF37] text-base uppercase tracking-widest leading-none mb-1">VIP MEMBER</h3>
+                <p className="text-[10px] text-[#888] font-medium tracking-wide">Área Exclusiva</p>
               </div>
             </div>
-            <span className="material-symbols-outlined text-white relative z-10">chevron_right</span>
+          </div>
+
+          {/* LOJA - (Standard Dark) */}
+          <div onClick={() => navigate('/store')} className="col-span-1 bg-[#1E1E1E] rounded-xl p-5 flex flex-col justify-between cursor-pointer hover:shadow-lg hover:shadow-[#d41142]/20 transition-all border border-[#333333] hover:border-[#d41142]/50 relative overflow-hidden group h-32">
+            <div className="relative z-10">
+              <div className="h-10 w-10 bg-[#252525] rounded-full flex items-center justify-center text-[#d41142] mb-2 border border-[#333]">
+                <span className="material-symbols-outlined text-2xl">shopping_cart</span>
+              </div>
+              <h3 className="font-black text-white text-base uppercase tracking-tight leading-none">Loja Virtual</h3>
+              <p className="text-[10px] text-[#A0A0A0] font-medium mt-1 group-hover:text-white transition-colors">Peças e Produtos</p>
+            </div>
           </div>
 
           {/* Quick Actions Grid - Standardized Cards */}

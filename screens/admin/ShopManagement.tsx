@@ -50,12 +50,29 @@ const ShopManagement: React.FC = () => {
     const [employeeForm, setEmployeeForm] = useState({ email: '', full_name: '', password: '', role: 'employee' });
 
     // Promo Form - Enhanced
-    const [promoForm, setPromoForm] = useState({ title: '', subtitle: '', image_url: '', action_text: 'Saber Mais', media_type: 'image' });
+    const [promoForm, setPromoForm] = useState({
+        title: '',
+        subtitle: '',
+        image_url: '',
+        action_text: 'Saber Mais',
+        media_type: 'image',
+        original_price: '',
+        promotional_price: '',
+        linked_product_id: ''
+    });
     const [promoFile, setPromoFile] = useState<File | null>(null);
+
+    const [products, setProducts] = useState<any[]>([]); // To link products
 
     useEffect(() => {
         fetchShopData();
+        fetchProducts(); // Fetch products for dropdown
     }, []);
+
+    const fetchProducts = async () => {
+        const { data } = await supabase.from('products').select('*').eq('active', true);
+        if (data) setProducts(data);
+    };
 
     const fetchShopData = async () => {
         try {
@@ -174,6 +191,24 @@ const ShopManagement: React.FC = () => {
         }
     };
 
+    // Auto fill based on product selection
+    const handleProductSelect = (productId: string) => {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            setPromoForm(prev => ({
+                ...prev,
+                linked_product_id: productId,
+                title: product.name,
+                image_url: product.image_url,
+                original_price: product.price.toString(),
+                promotional_price: (product.price * 0.9).toFixed(2), // suggested 10% off
+                action_text: 'Comprar Agora'
+            }));
+        } else {
+            setPromoForm(prev => ({ ...prev, linked_product_id: '' }));
+        }
+    }
+
     const handleSavePromo = async () => {
         try {
             // 1. Check Limit (if creating new active)
@@ -211,13 +246,16 @@ const ShopManagement: React.FC = () => {
                 image_url: finalUrl,
                 media_type: promoForm.media_type,
                 action_text: promoForm.action_text || 'Saber Mais',
-                active: true
+                active: true,
+                original_price: promoForm.original_price ? parseFloat(promoForm.original_price) : null,
+                promotional_price: promoForm.promotional_price ? parseFloat(promoForm.promotional_price) : null,
+                linked_product_id: promoForm.linked_product_id || null
             };
 
             await supabase.from('promotions').insert(payload);
 
             setShowPromoModal(false);
-            setPromoForm({ title: '', subtitle: '', image_url: '', action_text: '', media_type: 'image' });
+            setPromoForm({ title: '', subtitle: '', image_url: '', action_text: '', media_type: 'image', original_price: '', promotional_price: '', linked_product_id: '' });
             setPromoFile(null);
             fetchShopData();
 
@@ -433,7 +471,7 @@ const ShopManagement: React.FC = () => {
                             <input type="email" placeholder="Email" value={employeeForm.email} onChange={e => setEmployeeForm({ ...employeeForm, email: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
                             <input type="password" placeholder="Senha Provisória" value={employeeForm.password} onChange={e => setEmployeeForm({ ...employeeForm, password: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
                             <select value={employeeForm.role} onChange={e => setEmployeeForm({ ...employeeForm, role: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none">
-                                <option value="employee">Funcionário/Atendente</option>
+                                <option value="employee">Consultor Técnico</option>
                                 <option value="mechanic">Mecânico</option>
                             </select>
 
@@ -449,11 +487,36 @@ const ShopManagement: React.FC = () => {
             {/* Promo Modal */}
             {showPromoModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#1E1E1E] p-6 rounded-xl w-full max-w-md border border-[#333] shadow-2xl">
+                    <div className="bg-[#1E1E1E] p-6 rounded-xl w-full max-w-md border border-[#333] shadow-2xl overflow-y-auto max-h-[90vh]">
                         <h3 className="text-xl font-bold mb-4">Nova Campanha</h3>
                         <div className="space-y-3">
+                            <div>
+                                <label className="text-sm text-gray-400">Vincular Produto (Opcional)</label>
+                                <select
+                                    value={promoForm.linked_product_id}
+                                    onChange={e => handleProductSelect(e.target.value)}
+                                    className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none"
+                                >
+                                    <option value="">Selecione um produto da loja...</option>
+                                    {products.map(product => (
+                                        <option key={product.id} value={product.id}>{product.name} (R$ {product.price})</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <input placeholder="Título (ex: Oferta de Inverno)" value={promoForm.title} onChange={e => setPromoForm({ ...promoForm, title: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
-                            <input placeholder="Subtítulo (ex: 20% OFF)" value={promoForm.subtitle} onChange={e => setPromoForm({ ...promoForm, subtitle: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                            <input placeholder="Subtítulo/Descrição Curta" value={promoForm.subtitle} onChange={e => setPromoForm({ ...promoForm, subtitle: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+
+                            <div className="flex gap-3">
+                                <div className="flex-1">
+                                    <label className="text-xs text-gray-400 uppercase font-bold">Preço Original "De"</label>
+                                    <input type="number" placeholder="0.00" value={promoForm.original_price} onChange={e => setPromoForm({ ...promoForm, original_price: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-xs text-[#d41132] uppercase font-bold">Preço Promo "Por"</label>
+                                    <input type="number" placeholder="0.00" value={promoForm.promotional_price} onChange={e => setPromoForm({ ...promoForm, promotional_price: e.target.value })} className="w-full bg-[#252525] border border-[#d41132]/50 rounded-lg p-3 text-white focus:border-[#d41132] outline-none font-bold" />
+                                </div>
+                            </div>
 
                             <div className="flex flex-col gap-1">
                                 <label className="text-sm text-gray-400">Banner (Imagem ou Vídeo)</label>
@@ -464,6 +527,7 @@ const ShopManagement: React.FC = () => {
                                     className="w-full bg-[#252525] border border-[#333] rounded-lg p-2 text-white text-sm focus:border-[#d41132] outline-none"
                                 />
                                 {promoForm.media_type === 'video' && <p className="text-xs text-yellow-500">Vídeo selecionado (reprodução automática sem som)</p>}
+                                {promoForm.image_url && !promoFile && <p className="text-xs text-green-500">Imagem carregada do produto selecionado.</p>}
                             </div>
 
                             <div className="flex gap-3 mt-4">
@@ -477,6 +541,11 @@ const ShopManagement: React.FC = () => {
                 </div>
             )}
         </div>
+    );
+};
+
+export default ShopManagement;
+        </div >
     );
 };
 

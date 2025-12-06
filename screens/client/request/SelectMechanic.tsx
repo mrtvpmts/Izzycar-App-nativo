@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import { useRequest } from '../../../context/RequestContext';
+
+interface Mechanic {
+  id: string;
+  name: string;
+  role: string;
+  image: string | null;
+  available: boolean | null;
+  icon?: string;
+}
 
 const SelectMechanic: React.FC = () => {
   const navigate = useNavigate();
+  const { setMechanicId } = useRequest();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // State for fetched mechanics
-  const [mechanics, setMechanics] = useState<any[]>([]);
+  const [mechanics, setMechanics] = useState<Mechanic[]>([]);
 
   React.useEffect(() => {
     fetchMechanics();
@@ -17,7 +28,7 @@ const SelectMechanic: React.FC = () => {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('role', 'mechanic');
       if (data && data.length > 0) {
-        const mapped = data.map(p => ({
+        const mapped: Mechanic[] = data.map(p => ({
           id: p.id,
           name: p.full_name || 'Mecânico',
           role: 'Especialista', // Could be dynamic if added to schema
@@ -34,6 +45,13 @@ const SelectMechanic: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleNext = () => {
+    if (selectedId) {
+      setMechanicId(selectedId);
+      navigate('/request/date');
     }
   };
 
@@ -87,7 +105,7 @@ const SelectMechanic: React.FC = () => {
               <img src={person.image} alt={person.name} className="h-14 w-14 rounded-full object-cover border-2 border-[#333333]" />
             ) : (
               <div className="h-14 w-14 rounded-full bg-[#333333] flex items-center justify-center text-[#A0A0A0]">
-                <span className="material-symbols-outlined text-2xl">{person.icon}</span>
+                <span className="material-symbols-outlined text-2xl">{person.icon || 'person'}</span>
               </div>
             )}
 
@@ -105,7 +123,7 @@ const SelectMechanic: React.FC = () => {
 
       <div className="p-4 pt-2 border-t border-[#333333] sticky bottom-0 bg-[#121212]">
         <button
-          onClick={() => navigate('/request/date')}
+          onClick={handleNext}
           disabled={!selectedId}
           className={`w-full h-14 rounded-xl font-bold text-base flex items-center justify-center transition-colors ${selectedId ? 'bg-[#800020] text-white shadow-lg shadow-[#800020]/20 hover:bg-[#800020]/90' : 'bg-[#333333] text-[#A0A0A0] cursor-not-allowed'}`}
         >
