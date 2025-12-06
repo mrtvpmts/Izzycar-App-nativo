@@ -51,6 +51,9 @@ import Addresses from './screens/client/settings/Addresses';
 import SecurityPrivacy from './screens/client/settings/SecurityPrivacy';
 
 // Wrapper to handle scroll to top on route change
+// Auth Provider
+import { AuthProvider } from './context/AuthContext';
+
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   React.useEffect(() => {
@@ -61,69 +64,71 @@ const ScrollToTop = () => {
 
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <ScrollToTop />
-      <div className="min-h-screen bg-[#121212] text-white font-display overflow-x-hidden max-w-md mx-auto shadow-2xl relative">
-        <Routes>
-          <Route path="/" element={<SplashScreen />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/login" element={<Login />} />
+    <AuthProvider>
+      <HashRouter>
+        <ScrollToTop />
+        <div className="min-h-screen bg-[#121212] text-white font-display overflow-x-hidden max-w-md mx-auto shadow-2xl relative">
+          <Routes>
+            <Route path="/" element={<SplashScreen />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/login" element={<Login />} />
 
-          {/* Client Routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/services" element={<ServiceSelection />} />
-          <Route path="/order-status" element={<OrderStatus />} />
-          <Route path="/order-details" element={<OrderDetails />} />
-          <Route path="/quote" element={<Quote />} />
-          <Route path="/checklist" element={<Checklist />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/subscriptions" element={<ManageSubscriptions />} />
-          <Route path="/choose-plan" element={<ChoosePlan />} />
-          <Route path="/vip-menu" element={<VipMenu />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/history" element={<ServiceHistory />} />
-          <Route path="/appointments" element={<Appointments />} />
+            {/* Client Routes */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/services" element={<ServiceSelection />} />
+            <Route path="/order-status" element={<OrderStatus />} />
+            <Route path="/order-details" element={<OrderDetails />} />
+            <Route path="/quote" element={<Quote />} />
+            <Route path="/checklist" element={<Checklist />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/subscriptions" element={<ManageSubscriptions />} />
+            <Route path="/choose-plan" element={<ChoosePlan />} />
+            <Route path="/vip-menu" element={<VipMenu />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/history" element={<ServiceHistory />} />
+            <Route path="/appointments" element={<Appointments />} />
 
-          {/* Vehicle Management */}
-          <Route path="/vehicles" element={<VehicleList />} />
-          <Route path="/vehicles/add" element={<VehicleForm />} />
-          <Route path="/vehicles/edit/:id" element={<VehicleForm />} />
+            {/* Vehicle Management */}
+            <Route path="/vehicles" element={<VehicleList />} />
+            <Route path="/vehicles/add" element={<VehicleForm />} />
+            <Route path="/vehicles/edit/:id" element={<VehicleForm />} />
 
-          {/* Service Request Flow - Full Steps */}
-          <Route path="/request/select-vehicle" element={<SelectVehicle />} />
-          <Route path="/request/services" element={<SelectService />} />
-          <Route path="/request/consultant" element={<SelectConsultant />} />
-          <Route path="/request/mechanic" element={<SelectMechanic />} />
-          <Route path="/request/date" element={<SelectDate />} />
-          <Route path="/request/summary" element={<SchedulingSummary />} />
+            {/* Service Request Flow - Full Steps */}
+            <Route path="/request/select-vehicle" element={<SelectVehicle />} />
+            <Route path="/request/services" element={<SelectService />} />
+            <Route path="/request/consultant" element={<SelectConsultant />} />
+            <Route path="/request/mechanic" element={<SelectMechanic />} />
+            <Route path="/request/date" element={<SelectDate />} />
+            <Route path="/request/summary" element={<SchedulingSummary />} />
 
-          {/* Promo Details */}
-          <Route path="/promo/:id" element={<PromoDetails />} />
+            {/* Promo Details */}
+            <Route path="/promo/:id" element={<PromoDetails />} />
 
-          {/* Pickup and Delivery Flow */}
-          <Route path="/pickup/request" element={<PickupDeliveryRequest />} />
-          <Route path="/pickup/select-vehicle" element={<SelectVehicle />} />
-          <Route path="/pickup/pickup-address" element={<SelectPickupAddress />} />
-          <Route path="/pickup/delivery-address" element={<SelectDeliveryAddress />} />
-          <Route path="/pickup/employee" element={<SelectPickupEmployee />} />
-          <Route path="/pickup/datetime" element={<SelectPickupDateTime />} />
-          <Route path="/pickup/summary" element={<PickupDeliverySummary />} />
+            {/* Pickup and Delivery Flow */}
+            <Route path="/pickup/request" element={<PickupDeliveryRequest />} />
+            <Route path="/pickup/select-vehicle" element={<SelectVehicle />} />
+            <Route path="/pickup/pickup-address" element={<SelectPickupAddress />} />
+            <Route path="/pickup/delivery-address" element={<SelectDeliveryAddress />} />
+            <Route path="/pickup/employee" element={<SelectPickupEmployee />} />
+            <Route path="/pickup/datetime" element={<SelectPickupDateTime />} />
+            <Route path="/pickup/summary" element={<PickupDeliverySummary />} />
 
-          {/* Settings Routes */}
-          <Route path="/settings/personal-data" element={<PersonalData />} />
-          <Route path="/settings/addresses" element={<Addresses />} />
-          <Route path="/settings/security" element={<SecurityPrivacy />} />
+            {/* Settings Routes */}
+            <Route path="/settings/personal-data" element={<PersonalData />} />
+            <Route path="/settings/addresses" element={<Addresses />} />
+            <Route path="/settings/security" element={<SecurityPrivacy />} />
 
-          {/* Admin/Employee Routes */}
-          <Route path="/admin" element={<AdminMenu />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/shop" element={<ShopManagement />} />
-          <Route path="/employee/checklist" element={<InternalChecklist />} />
-          <Route path="/employee/services" element={<ServicesAvailable />} />
-        </Routes>
-      </div>
-    </HashRouter>
+            {/* Admin/Employee Routes */}
+            <Route path="/admin" element={<AdminMenu />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/shop" element={<ShopManagement />} />
+            <Route path="/employee/checklist" element={<InternalChecklist />} />
+            <Route path="/employee/services" element={<ServicesAvailable />} />
+          </Routes>
+        </div>
+      </HashRouter>
+    </AuthProvider>
   );
 };
 
