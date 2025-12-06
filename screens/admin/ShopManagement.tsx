@@ -26,11 +26,13 @@ interface Promotion {
     image_url: string;
     action_text: string;
     active: boolean;
+    media_type?: 'image' | 'video';
 }
 
 const ShopManagement: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
 
     const [services, setServices] = useState<Service[]>([]);
     const [team, setTeam] = useState<Profile[]>([]);
@@ -46,7 +48,10 @@ const ShopManagement: React.FC = () => {
     // Form States
     const [serviceForm, setServiceForm] = useState({ name: '', price: '', duration: '', description: '' });
     const [employeeForm, setEmployeeForm] = useState({ email: '', full_name: '', password: '', role: 'employee' });
-    const [promoForm, setPromoForm] = useState({ title: '', subtitle: '', image_url: '', action_text: 'Saber Mais' });
+
+    // Promo Form - Enhanced
+    const [promoForm, setPromoForm] = useState({ title: '', subtitle: '', image_url: '', action_text: 'Saber Mais', media_type: 'image' });
+    const [promoFile, setPromoFile] = useState<File | null>(null);
 
     useEffect(() => {
         fetchShopData();
@@ -158,14 +163,81 @@ const ShopManagement: React.FC = () => {
     };
 
     // --- Promotions Logic ---
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setPromoFile(file);
+            // Auto-detect type
+            const type = file.type.startsWith('video/') ? 'video' : 'image';
+            setPromoForm({ ...promoForm, media_type: type });
+        }
+    };
+
     const handleSavePromo = async () => {
-        await supabase.from('promotions').insert(promoForm);
-        setShowPromoModal(false);
-        setPromoForm({ title: '', subtitle: '', image_url: '', action_text: '' });
-        fetchShopData();
+        try {
+            // 1. Check Limit (if creating new active)
+            const activeCount = promotions.filter(p => p.active).length;
+            if (activeCount >= 6) {
+                alert('Limite máximo de 6 promoções ativas atingido. Desative ou remova uma existente.');
+                return;
+            }
+
+            setUploading(true);
+            let finalUrl = promoForm.image_url;
+
+            // 2. Upload File if present
+            if (promoFile) {
+                const fileExt = promoFile.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('promotions').upload(fileName, promoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage.from('promotions').getPublicUrl(fileName);
+                finalUrl = publicUrl;
+            }
+
+            if (!finalUrl) {
+                alert('Selecione uma imagem/vídeo ou forneça uma URL.');
+                setUploading(false);
+                return;
+            }
+
+            // 3. Save to DB
+            const payload = {
+                title: promoForm.title,
+                subtitle: promoForm.subtitle,
+                image_url: finalUrl,
+                media_type: promoForm.media_type,
+                action_text: promoForm.action_text || 'Saber Mais',
+                active: true
+            };
+
+            await supabase.from('promotions').insert(payload);
+
+            setShowPromoModal(false);
+            setPromoForm({ title: '', subtitle: '', image_url: '', action_text: '', media_type: 'image' });
+            setPromoFile(null);
+            fetchShopData();
+
+        } catch (error: any) {
+            console.error(error);
+            alert('Erro ao salvar promoção: ' + error.message);
+        } finally {
+            setUploading(false);
+        }
     };
 
     const togglePromoActive = async (id: string, current: boolean) => {
+        // If enabling, check limit
+        if (!current) {
+            const activeCount = promotions.filter(p => p.active).length;
+            if (activeCount >= 6) {
+                alert('Limite máximo de 6 promoções ativas atingido.');
+                return;
+            }
+        }
         await supabase.from('promotions').update({ active: !current }).eq('id', id);
         fetchShopData();
     };
@@ -251,23 +323,32 @@ const ShopManagement: React.FC = () => {
                 <section className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold text-white">Campanhas (Banners)</h2>
-                        <button onClick={() => setShowPromoModal(true)} className="bg-[#d41132] hover:bg-[#b00e36] text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
-                            <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Nova
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400">Ativas: {promotions.filter(p => p.active).length}/6</span>
+                            <button onClick={() => setShowPromoModal(true)} className="bg-[#d41132] hover:bg-[#b00e36] text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors">
+                                <span className="material-symbols-outlined text-sm">add_photo_alternate</span> Nova
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {promotions.map(p => (
-                            <div key={p.id} className={`group relative h-32 rounded-lg overflow-hidden border border-[#333] ${!p.active ? 'opacity-50 grayscale' : ''}`}>
-                                <img src={p.image_url} className="absolute inset-0 w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/50 p-3 flex flex-col justify-between">
+                            <div key={p.id} className={`group relative h-40 rounded-lg overflow-hidden border border-[#333] ${!p.active ? 'opacity-50 grayscale' : ''}`}>
+                                {p.media_type === 'video' ? (
+                                    <video src={p.image_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                                ) : (
+                                    <img src={p.image_url} className="absolute inset-0 w-full h-full object-cover" />
+                                )}
+
+                                <div className="absolute inset-0 bg-black/40 p-3 flex flex-col justify-between">
                                     <div>
-                                        <p className="font-bold text-white">{p.title}</p>
+                                        {p.media_type === 'video' && <span className="bg-black/50 text-xs px-2 py-0.5 rounded text-white flex items-center w-fit gap-1 mb-1"><span className="material-symbols-outlined text-xs">videocam</span> Vídeo</span>}
+                                        <p className="font-bold text-white shadow-sm">{p.title}</p>
                                         <p className="text-xs text-gray-200">{p.subtitle}</p>
                                     </div>
                                     <div className="flex justify-end gap-2 text-white">
-                                        <button onClick={() => togglePromoActive(p.id, p.active)} title={p.active ? "Desativar" : "Ativar"}><span className="material-symbols-outlined">{p.active ? 'visibility' : 'visibility_off'}</span></button>
-                                        <button onClick={() => handleDeletePromo(p.id)} className="text-red-400"><span className="material-symbols-outlined">delete</span></button>
+                                        <button onClick={() => togglePromoActive(p.id, p.active)} className="bg-black/50 p-1 rounded hover:bg-black/70" title={p.active ? "Desativar" : "Ativar"}><span className="material-symbols-outlined">{p.active ? 'visibility' : 'visibility_off'}</span></button>
+                                        <button onClick={() => handleDeletePromo(p.id)} className="bg-[#d41132]/80 p-1 rounded hover:bg-[#d41132]" title="Excluir"><span className="material-symbols-outlined">delete</span></button>
                                     </div>
                                 </div>
                             </div>
@@ -292,7 +373,7 @@ const ShopManagement: React.FC = () => {
                                         value={h.open_time?.slice(0, 5) || ''}
                                         onChange={(e) => handleHoursChange(idx, 'open_time', e.target.value)}
                                         disabled={h.is_closed}
-                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center"
+                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center text-white"
                                     />
                                     <span>-</span>
                                     <input
@@ -300,7 +381,7 @@ const ShopManagement: React.FC = () => {
                                         value={h.close_time?.slice(0, 5) || ''}
                                         onChange={(e) => handleHoursChange(idx, 'close_time', e.target.value)}
                                         disabled={h.is_closed}
-                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center"
+                                        className="bg-[#252525] border-none rounded px-2 py-1 text-sm w-20 text-center text-white"
                                     />
                                 </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
@@ -316,7 +397,6 @@ const ShopManagement: React.FC = () => {
                         ))}
                     </div>
                 </section>
-
             </main>
 
             {/* --- MODALS --- */}
@@ -374,11 +454,23 @@ const ShopManagement: React.FC = () => {
                         <div className="space-y-3">
                             <input placeholder="Título (ex: Oferta de Inverno)" value={promoForm.title} onChange={e => setPromoForm({ ...promoForm, title: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
                             <input placeholder="Subtítulo (ex: 20% OFF)" value={promoForm.subtitle} onChange={e => setPromoForm({ ...promoForm, subtitle: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
-                            <input placeholder="URL da Imagem Banner" value={promoForm.image_url} onChange={e => setPromoForm({ ...promoForm, image_url: e.target.value })} className="w-full bg-[#252525] border border-[#333] rounded-lg p-3 text-white focus:border-[#d41132] outline-none" />
+
+                            <div className="flex flex-col gap-1">
+                                <label className="text-sm text-gray-400">Banner (Imagem ou Vídeo)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    onChange={handleFileSelect}
+                                    className="w-full bg-[#252525] border border-[#333] rounded-lg p-2 text-white text-sm focus:border-[#d41132] outline-none"
+                                />
+                                {promoForm.media_type === 'video' && <p className="text-xs text-yellow-500">Vídeo selecionado (reprodução automática sem som)</p>}
+                            </div>
 
                             <div className="flex gap-3 mt-4">
                                 <button onClick={() => setShowPromoModal(false)} className="flex-1 bg-gray-700 py-3 rounded-lg font-bold">Cancelar</button>
-                                <button onClick={handleSavePromo} className="flex-1 bg-[#d41132] py-3 rounded-lg font-bold">Criar Banner</button>
+                                <button onClick={handleSavePromo} disabled={uploading} className="flex-1 bg-[#d41132] py-3 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center">
+                                    {uploading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : 'Criar Banner'}
+                                </button>
                             </div>
                         </div>
                     </div>

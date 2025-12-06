@@ -31,7 +31,8 @@ const Dashboard: React.FC = () => {
           title: p.title,
           subtitle: p.subtitle,
           image: p.image_url,
-          action: p.action_text || 'Saber Mais'
+          action: p.action_text || 'Saber Mais',
+          media_type: p.media_type
         }));
         setBanners(mapped);
       } else {
@@ -42,7 +43,8 @@ const Dashboard: React.FC = () => {
             title: 'Bem-vindo à LC Pneus',
             subtitle: 'O melhor cuidado para seu carro.',
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDlb6wQmOF9OeEJJ96ymdLJxi6HWfYViLwbDfuN-3ktVLMIfw7Wn9vTNp9R7yEdN0_QGgcP1YsYHQqooW4smFVSZqF70JRbCSSHG34owh7g5iU1iWkq33cOcpcx-HAmeVomq8pR9jsGU6MtBKkVsmwPfrwwLA8vi2QzsP4YlxR5FyP87vkHAjgZE6UMFmSRgc_POY6LrwuT6tY9e-ZIF3ya1w8iOtbBzvAs3TRCnl-i03IU_ck2ZkzQh9LYfqmJB9h5q-8SM1JznKE',
-            action: 'Agendar'
+            action: 'Agendar',
+            media_type: 'image'
           }
         ]);
       }
@@ -135,7 +137,19 @@ const Dashboard: React.FC = () => {
             {banners.map((banner, index) => (
               <div key={index} className="snap-center flex-shrink-0 w-[85%]">
                 <div className="relative bg-[#1E1E1E] rounded-xl overflow-hidden h-40 flex flex-col justify-end p-4 border border-[#333333]">
-                  <img alt={banner.title} className="absolute inset-0 w-full h-full object-cover opacity-60" src={banner.image} />
+                  {banner.media_type === 'video' ? (
+                    <video
+                      className="absolute inset-0 w-full h-full object-cover opacity-60"
+                      src={banner.image}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img alt={banner.title} className="absolute inset-0 w-full h-full object-cover opacity-60" src={banner.image} />
+                  )}
+
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
                   <div className="relative z-10">
                     <h3 className="font-bold text-white text-lg mb-1">{banner.title}</h3>
