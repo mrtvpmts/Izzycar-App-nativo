@@ -242,14 +242,12 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Fale Conosco - Full Width at Bottom */}
-          <div onClick={() => navigate('/chat')} className="col-span-2 bg-[#1E1E1E] rounded-xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-[#252525] border border-[#333333] hover:border-[#d41142]/30 transition-all">
-            <div className="h-10 w-10 bg-[#2a2a2a] rounded-full flex items-center justify-center text-[#d41142]">
-              <span className="material-symbols-outlined text-2xl">support_agent</span>
-            </div>
+          {/* Fale Conosco */}
+          <div onClick={() => navigate('/chat')} className="bg-[#1E1E1E] rounded-xl p-4 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:bg-[#252525] border border-[#333333] hover:border-[#d41142]/30 transition-all group">
+            <span className="material-symbols-outlined text-3xl text-[#d41142] group-hover:scale-110 transition-transform">support_agent</span>
             <div>
               <h3 className="font-bold text-white text-sm">Fale Conosco</h3>
-              <p className="text-[#A0A0A0] text-xs">Tire dúvidas com nossa equipe.</p>
+              <p className="text-[10px] text-[#A0A0A0]">Tire dúvidas</p>
             </div>
           </div>
 

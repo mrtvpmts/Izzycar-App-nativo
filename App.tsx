@@ -45,6 +45,11 @@ import SelectPickupEmployee from './screens/client/pickup/SelectPickupEmployee';
 import SelectPickupDateTime from './screens/client/pickup/SelectPickupDateTime';
 import PickupDeliverySummary from './screens/client/pickup/PickupDeliverySummary';
 
+// Settings Screens
+import PersonalData from './screens/client/settings/PersonalData';
+import Addresses from './screens/client/settings/Addresses';
+import SecurityPrivacy from './screens/client/settings/SecurityPrivacy';
+
 // Wrapper to handle scroll to top on route change
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -104,6 +109,11 @@ const App: React.FC = () => {
           <Route path="/pickup/employee" element={<SelectPickupEmployee />} />
           <Route path="/pickup/datetime" element={<SelectPickupDateTime />} />
           <Route path="/pickup/summary" element={<PickupDeliverySummary />} />
+
+          {/* Settings Routes */}
+          <Route path="/settings/personal-data" element={<PersonalData />} />
+          <Route path="/settings/addresses" element={<Addresses />} />
+          <Route path="/settings/security" element={<SecurityPrivacy />} />
 
           {/* Admin/Employee Routes */}
           <Route path="/admin" element={<AdminMenu />} />
