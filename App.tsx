@@ -20,6 +20,8 @@ import ShopManagement from './screens/admin/ShopManagement';
 import AdminMenu from './screens/admin/AdminMenu';
 import InternalChecklist from './screens/employee/InternalChecklist';
 import ServicesAvailable from './screens/employee/ServicesAvailable';
+import AdminRoute from './components/AdminRoute';
+
 
 // New Screens
 import VehicleList from './screens/client/vehicles/VehicleList';
@@ -119,10 +121,26 @@ const App: React.FC = () => {
             <Route path="/settings/addresses" element={<Addresses />} />
             <Route path="/settings/security" element={<SecurityPrivacy />} />
 
+
+
+
+
             {/* Admin/Employee Routes */}
-            <Route path="/admin" element={<AdminMenu />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/shop" element={<ShopManagement />} />
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminMenu />
+              </AdminRoute>
+            } />
+            <Route path="/admin/dashboard" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } />
+            <Route path="/admin/shop" element={
+              <AdminRoute>
+                <ShopManagement />
+              </AdminRoute>
+            } />
             <Route path="/employee/checklist" element={<InternalChecklist />} />
             <Route path="/employee/services" element={<ServicesAvailable />} />
           </Routes>
